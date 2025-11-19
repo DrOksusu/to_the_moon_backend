@@ -1,0 +1,44 @@
+# Node modules
+node_modules
+npm-debug.log
+
+# TypeScript build output
+dist
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Test
+coverage
+.nyc_output
+
+# Misc
+.claude
+README.md
+api_specification.md
+*.md
+test-db.ts
+check-*.js
+create-missing-profile.js
+set-admin.js
