@@ -5,6 +5,7 @@ node_modules/
 .env
 .env.local
 .env.*.local
+ENV_VARIABLES_CHECKLIST.md
 
 # Build output
 dist/

@@ -290,6 +290,48 @@ router.post('/upload', authenticate, upload.single('file'), (req, res) => {
    }));
    ```
 
+## AWS App Runner 배포
+
+### 🚀 빠른 배포 가이드
+
+이 프로젝트는 AWS App Runner로 배포할 수 있도록 설정되어 있습니다.
+
+#### 1. 사전 준비 확인
+- ✅ AWS RDS MySQL 데이터베이스
+- ✅ AWS S3 버킷
+- ✅ GitHub Repository
+
+#### 2. 배포 파일
+- `Dockerfile` - 컨테이너 이미지 빌드 설정
+- `apprunner.yaml` - App Runner 서비스 구성
+- `.dockerignore` - Docker 빌드 제외 파일
+
+#### 3. 배포 단계
+상세한 배포 가이드는 다음 문서를 참고하세요:
+- **[APP_RUNNER_SETUP.md](./APP_RUNNER_SETUP.md)** - 단계별 배포 가이드 (환경 변수는 로컬 `.env` 파일 참조)
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - 일반 배포 가이드
+
+#### 4. 데이터베이스 마이그레이션
+
+**Windows:**
+```bash
+migrate-production.bat
+```
+
+**Mac/Linux:**
+```bash
+chmod +x migrate-production.sh
+./migrate-production.sh
+```
+
+또는 직접 실행:
+```bash
+npx prisma migrate deploy
+npx prisma generate
+```
+
+---
+
 ## 환경 변수 설명
 
 | 변수명 | 설명 | 예시 |
