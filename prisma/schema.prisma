@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model feedbacks {
+  id                                String   @id
+  lesson_id                         String   @unique
+  teacher_id                        String
+  student_id                        String
+  rating                            Int      @db.TinyInt
+  content                           String   @db.Text
+  strengths                         String?  @db.Text
+  improvements                      String?  @db.Text
+  homework                          String?  @db.Text
+  created_at                        DateTime @default(now())
+  updated_at                        DateTime
+  lessons                           lessons  @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+  users_feedbacks_student_idTousers users    @relation("feedbacks_student_idTousers", fields: [student_id], references: [id], onDelete: Cascade)
+  users_feedbacks_teacher_idTousers users    @relation("feedbacks_teacher_idTousers", fields: [teacher_id], references: [id], onDelete: Cascade)
+
+  @@index([lesson_id])
+  @@index([student_id])
+  @@index([teacher_id])
+}
+
+model files {
+  id                             String   @id
+  uploader_id                    String
+  student_id                     String?
+  file_type                      String   @db.VarChar(100)
+  file_name                      String   @db.VarChar(255)
+  original_name                  String   @db.VarChar(255)
+  file_size                      BigInt
+  file_url                       String   @db.VarChar(500)
+  description                    String?  @db.Text
+  uploaded_at                    DateTime @default(now())
+  users_files_student_idTousers  users?   @relation("files_student_idTousers", fields: [student_id], references: [id], onDelete: Cascade)
+  users_files_uploader_idTousers users    @relation("files_uploader_idTousers", fields: [uploader_id], references: [id], onDelete: Cascade)
+
+  @@index([student_id])
+  @@index([uploaded_at])
+  @@index([uploader_id])
+}
+
+model lessons {
+  id                              String         @id
+  teacher_id                      String
+  student_id                      String
+  title                           String?        @db.VarChar(255)
+  scheduled_at                    DateTime
+  duration                        Int            @default(60)
+  status                          lessons_status @default(scheduled)
+  location                        String?        @db.VarChar(255)
+  notes                           String?        @db.Text
+  created_at                      DateTime       @default(now())
+  updated_at                      DateTime
+  feedbacks                       feedbacks?
+  users_lessons_student_idTousers users          @relation("lessons_student_idTousers", fields: [student_id], references: [id], onDelete: Cascade)
+  users_lessons_teacher_idTousers users          @relation("lessons_teacher_idTousers", fields: [teacher_id], references: [id], onDelete: Cascade)
+
+  @@index([scheduled_at])
+  @@index([status])
+  @@index([student_id])
+  @@index([teacher_id])
+}
+
+model student_profiles {
+  id                                       String   @id
+  user_id                                  String   @unique
+  teacher_id                               String
+  voice_type                               String?  @db.VarChar(50)
+  level                                    String?  @db.VarChar(50)
+  start_date                               DateTime @db.Date
+  goals                                    String?  @db.Text
+  created_at                               DateTime @default(now())
+  updated_at                               DateTime
+  users_student_profiles_teacher_idTousers users    @relation("student_profiles_teacher_idTousers", fields: [teacher_id], references: [id], onDelete: Cascade)
+  users_student_profiles_user_idTousers    users    @relation("student_profiles_user_idTousers", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([teacher_id])
+  @@index([user_id])
+}
+
+model users {
+  id                                                  String             @id
+  email                                               String             @unique @db.VarChar(255)
+  name                                                String             @db.VarChar(100)
+  password                                            String             @db.VarChar(255)
+  role                                                users_role
+  is_admin                                            Boolean            @default(false)
+  avatar                                              String?            @db.VarChar(500)
+  phone                                               String?            @db.VarChar(20)
+  created_at                                          DateTime           @default(now())
+  updated_at                                          DateTime
+  feedbacks_feedbacks_student_idTousers               feedbacks[]        @relation("feedbacks_student_idTousers")
+  feedbacks_feedbacks_teacher_idTousers               feedbacks[]        @relation("feedbacks_teacher_idTousers")
+  files_files_student_idTousers                       files[]            @relation("files_student_idTousers")
+  files_files_uploader_idTousers                      files[]            @relation("files_uploader_idTousers")
+  lessons_lessons_student_idTousers                   lessons[]          @relation("lessons_student_idTousers")
+  lessons_lessons_teacher_idTousers                   lessons[]          @relation("lessons_teacher_idTousers")
+  student_profiles_student_profiles_teacher_idTousers student_profiles[] @relation("student_profiles_teacher_idTousers")
+  student_profiles_student_profiles_user_idTousers    student_profiles?  @relation("student_profiles_user_idTousers")
+
+  @@index([email])
+  @@index([role])
+}
+
+enum users_role {
+  teacher
+  student
+}
+
+enum lessons_status {
+  scheduled
+  completed
+  cancelled
+}
