@@ -4,8 +4,10 @@ import dotenv from 'dotenv';
 import routes from './routes';
 import { errorHandler, notFoundHandler } from './middlewares/errorHandler';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables (only in development)
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const app: Application = express();
 
