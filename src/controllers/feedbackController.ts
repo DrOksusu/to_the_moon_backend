@@ -51,7 +51,7 @@ export const getFeedbacks = async (
             name: true,
           },
         },
-        student: {
+        users_feedbacks_student_idTousers: {
           select: {
             id: true,
             name: true,
@@ -111,7 +111,7 @@ export const getFeedback = async (
             name: true,
           },
         },
-        student: {
+        users_feedbacks_student_idTousers: {
           select: {
             id: true,
             name: true,
