@@ -22,11 +22,11 @@ export const getDashboardStats = async (
 
     if (userRole === 'teacher') {
       // 선생님용 대시보드
-      const totalStudents = await prisma.studentProfile.count({
+      const totalStudents = await prisma.student_profiles.count({
         where: { teacher_id: userId },
       });
 
-      const upcomingLessons = await prisma.lesson.count({
+      const upcomingLessons = await prisma.lessons.count({
         where: {
           teacher_id: userId,
           status: 'scheduled',
@@ -37,19 +37,19 @@ export const getDashboardStats = async (
       });
 
       // 피드백이 없는 완료된 레슨 수
-      const completedLessonsWithoutFeedback = await prisma.lesson.count({
+      const completedLessonsWithoutFeedback = await prisma.lessons.count({
         where: {
           teacher_id: userId,
           status: 'completed',
-          feedback: null,
+          feedbacks: null,
         },
       });
 
       // 최근 학생 목록 (최근 수업 기준)
-      const recentStudents = await prisma.studentProfile.findMany({
+      const recentStudents = await prisma.student_profiles.findMany({
         where: { teacher_id: userId },
         include: {
-          user: {
+          users_student_profiles_user_idTousers: {
             select: {
               id: true,
               name: true,
@@ -63,7 +63,7 @@ export const getDashboardStats = async (
       });
 
       // 다가오는 레슨 목록
-      const upcomingLessonsList = await prisma.lesson.findMany({
+      const upcomingLessonsList = await prisma.lessons.findMany({
         where: {
           teacher_id: userId,
           status: 'scheduled',
@@ -72,7 +72,7 @@ export const getDashboardStats = async (
           },
         },
         include: {
-          student: {
+          users_lessons_student_idTousers: {
             select: {
               name: true,
             },
@@ -88,26 +88,26 @@ export const getDashboardStats = async (
         total_students: totalStudents,
         upcoming_lessons: upcomingLessons,
         pending_feedback: completedLessonsWithoutFeedback,
-        recent_students: recentStudents.map((profile) => ({
+        recent_students: recentStudents.map((profile: any) => ({
           id: profile.id,
-          name: profile.user.name,
+          name: profile.users_student_profiles_user_idTousers.name,
           voice_type: profile.voice_type,
           level: profile.level,
         })),
-        upcoming_lessons_list: upcomingLessonsList.map((lesson) => ({
+        upcoming_lessons_list: upcomingLessonsList.map((lesson: any) => ({
           id: lesson.id,
-          student_name: lesson.student.name,
+          student_name: lesson.users_lessons_student_idTousers.name,
           scheduled_at: lesson.scheduled_at,
           duration: lesson.duration,
         })),
       });
     } else {
       // 학생용 대시보드
-      const profile = await prisma.studentProfile.findUnique({
+      const profile = await prisma.student_profiles.findUnique({
         where: { user_id: userId },
       });
 
-      const upcomingLessons = await prisma.lesson.count({
+      const upcomingLessons = await prisma.lessons.count({
         where: {
           student_id: userId,
           status: 'scheduled',
@@ -117,19 +117,19 @@ export const getDashboardStats = async (
         },
       });
 
-      const totalFeedback = await prisma.feedback.count({
+      const totalFeedback = await prisma.feedbacks.count({
         where: { student_id: userId },
       });
 
       // 최근 피드백
-      const recentFeedback = await prisma.feedback.findMany({
+      const recentFeedback = await prisma.feedbacks.findMany({
         where: { student_id: userId },
         orderBy: { created_at: 'desc' },
         take: 5,
       });
 
       // 다가오는 레슨 목록
-      const upcomingLessonsList = await prisma.lesson.findMany({
+      const upcomingLessonsList = await prisma.lessons.findMany({
         where: {
           student_id: userId,
           status: 'scheduled',
@@ -138,7 +138,7 @@ export const getDashboardStats = async (
           },
         },
         include: {
-          teacher: {
+          users_lessons_teacher_idTousers: {
             select: {
               name: true,
             },
@@ -157,15 +157,15 @@ export const getDashboardStats = async (
         },
         upcoming_lessons: upcomingLessons,
         total_feedback: totalFeedback,
-        recent_feedback: recentFeedback.map((feedback) => ({
+        recent_feedback: recentFeedback.map((feedback: any) => ({
           id: feedback.id,
           rating: feedback.rating,
           content: feedback.content,
           created_at: feedback.created_at,
         })),
-        upcoming_lessons_list: upcomingLessonsList.map((lesson) => ({
+        upcoming_lessons_list: upcomingLessonsList.map((lesson: any) => ({
           id: lesson.id,
-          teacher_name: lesson.teacher.name,
+          teacher_name: lesson.users_lessons_teacher_idTousers.name,
           scheduled_at: lesson.scheduled_at,
           duration: lesson.duration,
           location: lesson.location,

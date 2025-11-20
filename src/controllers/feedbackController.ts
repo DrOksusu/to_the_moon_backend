@@ -38,7 +38,7 @@ export const getFeedbacks = async (
     const feedbacks = await prisma.feedbacks.findMany({
       where,
       include: {
-        lesson: {
+        lessons: {
           select: {
             id: true,
             title: true,
@@ -97,7 +97,7 @@ export const getFeedback = async (
         OR: [{ teacher_id: userId }, { student_id: userId }],
       },
       include: {
-        lesson: {
+        lessons: {
           select: {
             id: true,
             title: true,
@@ -245,7 +245,7 @@ export const updateFeedback = async (
     const teacherId = req.user.userId;
 
     // 해당 선생님의 피드백인지 확인
-    const existingFeedback = await prisma.feedback.findFirst({
+    const existingFeedback = await prisma.feedbacks.findFirst({
       where: {
         id,
         teacher_id: teacherId,

@@ -42,7 +42,7 @@ export const getFiles = async (req: Request, res: Response): Promise<void> => {
       };
     }
 
-    const files = await prisma.file.findMany({
+    const files = await prisma.files.findMany({
       where,
       include: {
         uploader: {
@@ -99,7 +99,7 @@ export const uploadFile = async (
     const { student_id, description } = req.body;
 
     // 파일 정보 저장
-    const savedFile = await prisma.file.create({
+    const savedFile = await prisma.files.create({
       data: {
         uploader_id: req.user.userId,
         student_id: student_id || null,
@@ -149,7 +149,7 @@ export const downloadFile = async (
     const userId = req.user.userId;
 
     // 파일 조회 (권한 확인)
-    const file = await prisma.file.findFirst({
+    const file = await prisma.files.findFirst({
       where: {
         id,
         OR: [
@@ -197,7 +197,7 @@ export const deleteFile = async (
     const userId = req.user.userId;
 
     // 업로더인지 확인
-    const file = await prisma.file.findFirst({
+    const file = await prisma.files.findFirst({
       where: {
         id,
         uploader_id: userId,
@@ -212,7 +212,7 @@ export const deleteFile = async (
     }
 
     // 파일 삭제 (S3에서는 삭제하지 않음 - 필요시 추가)
-    await prisma.file.delete({
+    await prisma.files.delete({
       where: { id },
     });
 

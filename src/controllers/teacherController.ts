@@ -6,11 +6,11 @@ import prisma from '../config/database';
  * GET /api/teachers
  */
 export const getTeachers = async (
-  req: Request,
+  _req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const teachers = await prisma.user.findMany({
+    const teachers = await prisma.users.findMany({
       where: {
         role: 'teacher',
       },
