@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
+import { randomUUID } from 'crypto';
 
 /**
  * 파일 목록 조회
@@ -45,13 +46,13 @@ export const getFiles = async (req: Request, res: Response): Promise<void> => {
     const files = await prisma.files.findMany({
       where,
       include: {
-        uploader: {
+        users_files_uploader_idTousers: {
           select: {
             id: true,
             name: true,
           },
         },
-        student: {
+        users_files_student_idTousers: {
           select: {
             id: true,
             name: true,
@@ -101,6 +102,7 @@ export const uploadFile = async (
     // 파일 정보 저장
     const savedFile = await prisma.files.create({
       data: {
+        id: randomUUID(),
         uploader_id: req.user.userId,
         student_id: student_id || null,
         file_type: file.mimetype,

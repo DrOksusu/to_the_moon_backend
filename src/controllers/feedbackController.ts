@@ -45,7 +45,7 @@ export const getFeedbacks = async (
             scheduled_at: true,
           },
         },
-        teacher: {
+        users_feedbacks_teacher_idTousers: {
           select: {
             id: true,
             name: true,
@@ -105,7 +105,7 @@ export const getFeedback = async (
             duration: true,
           },
         },
-        teacher: {
+        users_feedbacks_teacher_idTousers: {
           select: {
             id: true,
             name: true,
