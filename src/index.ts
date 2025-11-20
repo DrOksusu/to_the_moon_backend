@@ -1,3 +1,10 @@
+// Debug: Log environment variables before anything else
+console.log('========== ENVIRONMENT DEBUG ==========');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET');
+console.log('PORT:', process.env.PORT);
+console.log('=======================================');
+
 import app from './app';
 import prisma from './config/database';
 
