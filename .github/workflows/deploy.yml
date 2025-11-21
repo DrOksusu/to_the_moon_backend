@@ -38,7 +38,32 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
       - name: Deploy to App Runner
+        env:
+          SERVICE_NAME: to-the-moon-backend
         run: |
           echo "Image pushed successfully!"
           echo "ECR Image: ${{ steps.login-ecr.outputs.registry }}/to-the-moon-backend:latest"
-          echo "Go to AWS App Runner console and update your service to use the new image."
+
+          # Check if App Runner service exists
+          if aws apprunner list-services --region ap-northeast-1 | grep -q "$SERVICE_NAME"; then
+            echo "App Runner service found. Triggering deployment..."
+
+            # Get service ARN
+            SERVICE_ARN=$(aws apprunner list-services --region ap-northeast-1 --query "ServiceSummaryList[?ServiceName=='$SERVICE_NAME'].ServiceArn" --output text)
+
+            if [ -n "$SERVICE_ARN" ]; then
+              # Trigger deployment
+              aws apprunner start-deployment --service-arn "$SERVICE_ARN" --region ap-northeast-1
+              echo "✅ Deployment triggered successfully!"
+              echo "Service ARN: $SERVICE_ARN"
+            else
+              echo "❌ Could not find service ARN"
+              exit 1
+            fi
+          else
+            echo "⚠️  App Runner service '$SERVICE_NAME' not found."
+            echo "Please create the service first using the AWS Console:"
+            echo "1. Go to https://ap-northeast-1.console.aws.amazon.com/apprunner/home?region=ap-northeast-1#/services"
+            echo "2. Create a new service using the ECR image: ${{ steps.login-ecr.outputs.registry }}/to-the-moon-backend:latest"
+            echo "3. After creating the service, future deployments will be automatic!"
+          fi
