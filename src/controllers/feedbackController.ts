@@ -199,23 +199,37 @@ export const createFeedback = async (
       return;
     }
 
-    // 피드백 생성
-    const feedback = await prisma.feedbacks.create({
-      data: {
-        id: randomUUID(),
-        lesson_id,
-        teacher_id: req.user.userId,
-        student_id,
-        rating,
-        content,
-        strengths,
-        improvements,
-        homework,
-        updated_at: new Date(),
-      },
+    // 트랜잭션으로 피드백 생성 및 레슨 상태 업데이트
+    const result = await prisma.$transaction(async (tx) => {
+      // 피드백 생성
+      const feedback = await tx.feedbacks.create({
+        data: {
+          id: randomUUID(),
+          lesson_id,
+          teacher_id: req.user.userId,
+          student_id,
+          rating,
+          content,
+          strengths,
+          improvements,
+          homework,
+          updated_at: new Date(),
+        },
+      });
+
+      // 레슨 상태를 completed로 변경
+      await tx.lessons.update({
+        where: { id: lesson_id },
+        data: {
+          status: 'completed',
+          updated_at: new Date(),
+        },
+      });
+
+      return feedback;
     });
 
-    res.status(201).json(feedback);
+    res.status(201).json(result);
   } catch (error) {
     console.error('Create feedback error:', error);
     res.status(500).json({
