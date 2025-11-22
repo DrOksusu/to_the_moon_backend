@@ -31,6 +31,14 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // 선생님 가입 제한 - 특정 이메일만 허용
+    if (role === 'teacher' && email !== 'wjddms2767@naver.com') {
+      res.status(403).json({
+        error: 'Teacher registration is restricted to authorized users only',
+      });
+      return;
+    }
+
     // 전화번호 중복 확인
     const existingPhone = await prisma.users.findUnique({
       where: { phone },
