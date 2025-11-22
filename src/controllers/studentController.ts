@@ -165,6 +165,9 @@ export const getStudents = async (
 
     console.log('getStudents - Query where:', JSON.stringify(where));
 
+    // is_active가 true인 학생만 조회 (탈퇴하지 않은 학생)
+    where.is_active = true;
+
     const students = await prisma.student_profiles.findMany({
       where,
       include: {
@@ -225,6 +228,7 @@ export const getStudent = async (
       where: {
         id,
         teacher_id: teacherId,
+        is_active: true, // 탈퇴하지 않은 학생만 조회
       },
       include: {
         users_student_profiles_user_idTousers: {
@@ -397,6 +401,7 @@ export const updateStudent = async (
       where: {
         id,
         teacher_id: teacherId,
+        is_active: true, // 탈퇴한 학생은 수정 불가
       },
     });
 
@@ -433,7 +438,7 @@ export const updateStudent = async (
 };
 
 /**
- * 학생 삭제 (선생님 전용)
+ * 학생 탈퇴 처리 (선생님 전용) - Soft Delete
  * DELETE /api/teacher/students/:id
  */
 export const deleteStudent = async (
@@ -456,28 +461,33 @@ export const deleteStudent = async (
       where: {
         id,
         teacher_id: teacherId,
+        is_active: true, // 이미 탈퇴한 학생은 다시 탈퇴 불가
       },
     });
 
     if (!existingProfile) {
       res.status(404).json({
-        error: 'Student not found',
+        error: 'Student not found or already inactive',
       });
       return;
     }
 
-    // 프로필 삭제 (사용자는 CASCADE로 삭제되지 않음)
-    await prisma.student_profiles.delete({
+    // Soft Delete - is_active를 false로 설정 (실제 삭제하지 않음)
+    await prisma.student_profiles.update({
       where: { id },
+      data: {
+        is_active: false,
+        updated_at: new Date(),
+      },
     });
 
     res.json({
-      message: 'Student deleted successfully',
+      message: 'Student deactivated successfully',
     });
   } catch (error) {
     console.error('Delete student error:', error);
     res.status(500).json({
-      error: 'Failed to delete student',
+      error: 'Failed to deactivate student',
     });
   }
 };

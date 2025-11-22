@@ -96,6 +96,7 @@ model student_profiles {
   level                                    String?  @db.VarChar(50)
   start_date                               DateTime @db.Date
   goals                                    String?  @db.Text
+  is_active                                Boolean  @default(true)
   created_at                               DateTime @default(now())
   updated_at                               DateTime
   users_student_profiles_teacher_idTousers users    @relation("student_profiles_teacher_idTousers", fields: [teacher_id], references: [id], onDelete: Cascade)
@@ -103,6 +104,7 @@ model student_profiles {
 
   @@index([teacher_id])
   @@index([user_id])
+  @@index([is_active])
 }
 
 model users {
