@@ -199,37 +199,23 @@ export const createFeedback = async (
       return;
     }
 
-    // 트랜잭션으로 피드백 생성 및 레슨 상태 업데이트
-    const result = await prisma.$transaction(async (tx) => {
-      // 피드백 생성
-      const feedback = await tx.feedbacks.create({
-        data: {
-          id: randomUUID(),
-          lesson_id,
-          teacher_id: req.user.userId,
-          student_id,
-          rating,
-          content,
-          strengths,
-          improvements,
-          homework,
-          updated_at: new Date(),
-        },
-      });
-
-      // 레슨 상태를 completed로 변경
-      await tx.lessons.update({
-        where: { id: lesson_id },
-        data: {
-          status: 'completed',
-          updated_at: new Date(),
-        },
-      });
-
-      return feedback;
+    // 피드백 생성
+    const feedback = await prisma.feedbacks.create({
+      data: {
+        id: randomUUID(),
+        lesson_id,
+        teacher_id: req.user.userId,
+        student_id,
+        rating,
+        content,
+        strengths,
+        improvements,
+        homework,
+        updated_at: new Date(),
+      },
     });
 
-    res.status(201).json(result);
+    res.status(201).json(feedback);
   } catch (error) {
     console.error('Create feedback error:', error);
     res.status(500).json({
@@ -281,34 +267,20 @@ export const updateFeedback = async (
       return;
     }
 
-    // 트랜잭션으로 피드백 업데이트 및 레슨 상태 변경
-    const result = await prisma.$transaction(async (tx) => {
-      // 피드백 업데이트
-      const updatedFeedback = await tx.feedbacks.update({
-        where: { id },
-        data: {
-          rating,
-          content,
-          strengths,
-          improvements,
-          homework,
-          updated_at: new Date(),
-        },
-      });
-
-      // 레슨 상태를 completed로 변경 (아직 completed가 아닌 경우)
-      await tx.lessons.update({
-        where: { id: existingFeedback.lesson_id },
-        data: {
-          status: 'completed',
-          updated_at: new Date(),
-        },
-      });
-
-      return updatedFeedback;
+    // 피드백 업데이트
+    const updatedFeedback = await prisma.feedbacks.update({
+      where: { id },
+      data: {
+        rating,
+        content,
+        strengths,
+        improvements,
+        homework,
+        updated_at: new Date(),
+      },
     });
 
-    res.json(result);
+    res.json(updatedFeedback);
   } catch (error) {
     console.error('Update feedback error:', error);
     res.status(500).json({
