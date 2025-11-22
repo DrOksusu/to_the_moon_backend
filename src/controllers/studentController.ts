@@ -321,7 +321,7 @@ export const createStudent = async (
 
     if (existingUser) {
       res.status(400).json({
-        error: 'This phone number is already registered. Please ask the student to log in.',
+        error: 'Phone number already registered - Student account exists',
       });
       return;
     }
@@ -333,7 +333,7 @@ export const createStudent = async (
 
     if (existingPreReg) {
       res.status(400).json({
-        error: 'This student is already pre-registered',
+        error: 'Phone number already pre-registered - Student will be auto-assigned on signup',
       });
       return;
     }
