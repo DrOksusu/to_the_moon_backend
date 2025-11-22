@@ -6,6 +6,7 @@ import lessonRoutes from './lessonRoutes';
 import feedbackRoutes from './feedbackRoutes';
 import fileRoutes from './fileRoutes';
 import dashboardRoutes from './dashboardRoutes';
+import studentDashboardRoutes from './studentDashboardRoutes';
 
 const router = Router();
 
@@ -27,5 +28,6 @@ router.use('/lessons', lessonRoutes);
 router.use('/feedback', feedbackRoutes);
 router.use('/files', fileRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/student', studentDashboardRoutes);
 
 export default router;
