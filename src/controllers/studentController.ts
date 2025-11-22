@@ -289,7 +289,7 @@ export const getStudent = async (
 };
 
 /**
- * 학생 등록 (선생님 전용)
+ * 학생 사전등록 (선생님 전용)
  * POST /api/teacher/students
  */
 export const createStudent = async (
@@ -304,79 +304,70 @@ export const createStudent = async (
       return;
     }
 
-    const { name, email, phone, password, voice_type, level, start_date, goals } =
-      req.body;
+    const { name, phone, voice_type, level, start_date, goals } = req.body;
 
     // 입력 검증
-    if (!name || !email || !password) {
+    if (!name || !phone) {
       res.status(400).json({
-        error: 'Name, email, and password are required',
+        error: 'Name and phone are required',
       });
       return;
     }
 
-    // 이메일 중복 확인
+    // 전화번호 중복 확인 (이미 등록된 사용자인지)
     const existingUser = await prisma.users.findUnique({
-      where: { email },
+      where: { phone },
     });
 
     if (existingUser) {
       res.status(400).json({
-        error: 'Email already exists',
+        error: 'This phone number is already registered. Please ask the student to log in.',
       });
       return;
     }
 
-    // 비밀번호 해싱
-    const hashedPassword = await hashPassword(password);
+    // 전화번호 중복 확인 (이미 사전등록되었는지)
+    const existingPreReg = await prisma.student_pre_registrations.findUnique({
+      where: { student_phone: phone },
+    });
 
-    // 트랜잭션으로 사용자와 프로필 생성
-    const result = await prisma.$transaction(async (tx) => {
-      // 학생 사용자 생성
-      const user = await tx.users.create({
-        data: {
-          id: randomUUID(),
-          email,
-          name,
-          password: hashedPassword,
-          role: 'student',
-          phone,
-          updated_at: new Date(),
-        },
+    if (existingPreReg) {
+      res.status(400).json({
+        error: 'This student is already pre-registered',
       });
+      return;
+    }
 
-      // 학생 프로필 생성
-      const profile = await tx.student_profiles.create({
-        data: {
-          id: randomUUID(),
-          user_id: user.id,
-          teacher_id: req.user!.userId,
-          voice_type,
-          level,
-          start_date: start_date ? new Date(start_date) : new Date(),
-          goals,
-          updated_at: new Date(),
-        },
-      });
-
-      return { user, profile };
+    // 학생 사전등록 생성
+    const preRegistration = await prisma.student_pre_registrations.create({
+      data: {
+        id: randomUUID(),
+        teacher_id: req.user.userId,
+        student_name: name,
+        student_phone: phone,
+        voice_type,
+        level,
+        start_date: start_date ? new Date(start_date) : new Date(),
+        goals,
+        is_registered: false,
+        updated_at: new Date(),
+      },
     });
 
     res.status(201).json({
-      id: result.profile.id,
-      user: {
-        id: result.user.id,
-        name: result.user.name,
-        email: result.user.email,
-      },
-      voice_type: result.profile.voice_type,
-      level: result.profile.level,
-      start_date: result.profile.start_date,
+      id: preRegistration.id,
+      student_name: preRegistration.student_name,
+      student_phone: preRegistration.student_phone,
+      voice_type: preRegistration.voice_type,
+      level: preRegistration.level,
+      start_date: preRegistration.start_date,
+      is_registered: preRegistration.is_registered,
+      message: 'Student pre-registered. They can now sign up with this phone number.',
     });
   } catch (error) {
     console.error('Create student error:', error);
     res.status(500).json({
-      error: 'Failed to create student',
+      error: 'Failed to pre-register student',
     });
   }
 };

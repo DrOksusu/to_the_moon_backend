@@ -16,10 +16,10 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
     console.log('Signup request body:', req.body);
 
     // 입력 검증
-    if (!name || !email || !password || !role) {
-      console.log('Missing fields:', { name: !!name, email: !!email, password: !!password, role: !!role });
+    if (!name || !password || !phone || !role) {
+      console.log('Missing fields:', { name: !!name, password: !!password, phone: !!phone, role: !!role });
       res.status(400).json({
-        error: 'Name, email, password, and role are required',
+        error: 'Name, password, phone, and role are required',
       });
       return;
     }
@@ -31,49 +31,103 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // 이메일 중복 확인
-    const existingUser = await prisma.users.findUnique({
-      where: { email },
+    // 전화번호 중복 확인
+    const existingPhone = await prisma.users.findUnique({
+      where: { phone },
     });
 
-    if (existingUser) {
+    if (existingPhone) {
       res.status(400).json({
-        error: 'Email already exists',
+        error: 'Phone number already exists',
       });
       return;
+    }
+
+    // 이메일 중복 확인 (이메일이 제공된 경우)
+    if (email) {
+      const existingEmail = await prisma.users.findUnique({
+        where: { email },
+      });
+
+      if (existingEmail) {
+        res.status(400).json({
+          error: 'Email already exists',
+        });
+        return;
+      }
     }
 
     // 비밀번호 해싱
     const hashedPassword = await hashPassword(password);
 
-    // 사용자 생성 (학생은 프로필 없이 생성, 나중에 선생님이 할당)
-    const user = await prisma.users.create({
-      data: {
-        id: randomUUID(),
-        email,
-        name,
-        password: hashedPassword,
-        role,
-        phone,
-        updated_at: new Date(),
-      },
+    // 학생이 회원가입하는 경우, 사전등록된 정보가 있는지 확인
+    let preRegistration = null;
+    if (role === 'student') {
+      preRegistration = await prisma.student_pre_registrations.findUnique({
+        where: { student_phone: phone },
+      });
+    }
+
+    // 트랜잭션으로 사용자 생성 및 프로필 연결
+    const result = await prisma.$transaction(async (tx) => {
+      // 사용자 생성
+      const user = await tx.users.create({
+        data: {
+          id: randomUUID(),
+          email: email || `${phone}@tothemoon.com`,
+          name,
+          password: hashedPassword,
+          role,
+          phone,
+          updated_at: new Date(),
+        },
+      });
+
+      // 학생이고 사전등록 정보가 있으면 자동으로 프로필 생성
+      if (role === 'student' && preRegistration) {
+        await tx.student_profiles.create({
+          data: {
+            id: randomUUID(),
+            user_id: user.id,
+            teacher_id: preRegistration.teacher_id,
+            voice_type: preRegistration.voice_type,
+            level: preRegistration.level,
+            start_date: preRegistration.start_date,
+            goals: preRegistration.goals,
+            updated_at: new Date(),
+          },
+        });
+
+        // 사전등록 상태 업데이트
+        await tx.student_pre_registrations.update({
+          where: { id: preRegistration.id },
+          data: {
+            is_registered: true,
+            updated_at: new Date(),
+          },
+        });
+      }
+
+      return user;
     });
 
     // JWT 토큰 생성
     const token = generateAccessToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
+      userId: result.id,
+      email: result.email,
+      role: result.role,
     });
 
     res.status(201).json({
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
+        id: result.id,
+        email: result.email,
+        name: result.name,
+        role: result.role,
+        phone: result.phone,
       },
       token,
+      autoMatched: !!preRegistration, // 자동 매칭 여부 반환
     });
   } catch (error) {
     console.error('Signup error:', error);
@@ -89,19 +143,24 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
  */
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password, role } = req.body;
+    const { identifier, password, role } = req.body; // identifier = email 또는 phone
 
     // 입력 검증
-    if (!email || !password || !role) {
+    if (!identifier || !password || !role) {
       res.status(400).json({
-        error: 'Email, password, and role are required',
+        error: 'Email/Phone, password, and role are required',
       });
       return;
     }
 
-    // 사용자 조회
-    const user = await prisma.users.findUnique({
-      where: { email },
+    // 이메일 또는 전화번호로 사용자 조회
+    const user = await prisma.users.findFirst({
+      where: {
+        OR: [
+          { email: identifier },
+          { phone: identifier },
+        ],
+      },
     });
 
     if (!user) {
@@ -141,6 +200,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         email: user.email,
         name: user.name,
         role: user.role,
+        phone: user.phone,
       },
       token,
     });

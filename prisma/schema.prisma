@@ -69,6 +69,25 @@ model lessons {
   @@index([teacher_id])
 }
 
+model student_pre_registrations {
+  id            String   @id
+  teacher_id    String
+  student_name  String   @db.VarChar(100)
+  student_phone String   @unique @db.VarChar(20)
+  voice_type    String?  @db.VarChar(50)
+  level         String?  @db.VarChar(50)
+  start_date    DateTime @db.Date
+  goals         String?  @db.Text
+  is_registered Boolean  @default(false)
+  created_at    DateTime @default(now())
+  updated_at    DateTime
+  users         users    @relation("pre_registrations_teacher_idTousers", fields: [teacher_id], references: [id], onDelete: Cascade)
+
+  @@index([teacher_id])
+  @@index([student_phone])
+  @@index([is_registered])
+}
+
 model student_profiles {
   id                                       String   @id
   user_id                                  String   @unique
@@ -87,27 +106,29 @@ model student_profiles {
 }
 
 model users {
-  id                                                  String             @id
-  email                                               String             @unique @db.VarChar(255)
-  name                                                String             @db.VarChar(100)
-  password                                            String             @db.VarChar(255)
-  role                                                users_role
-  is_admin                                            Boolean            @default(false)
-  avatar                                              String?            @db.VarChar(500)
-  phone                                               String?            @db.VarChar(20)
-  created_at                                          DateTime           @default(now())
-  updated_at                                          DateTime
-  feedbacks_feedbacks_student_idTousers               feedbacks[]        @relation("feedbacks_student_idTousers")
-  feedbacks_feedbacks_teacher_idTousers               feedbacks[]        @relation("feedbacks_teacher_idTousers")
-  files_files_student_idTousers                       files[]            @relation("files_student_idTousers")
-  files_files_uploader_idTousers                      files[]            @relation("files_uploader_idTousers")
-  lessons_lessons_student_idTousers                   lessons[]          @relation("lessons_student_idTousers")
-  lessons_lessons_teacher_idTousers                   lessons[]          @relation("lessons_teacher_idTousers")
-  student_profiles_student_profiles_teacher_idTousers student_profiles[] @relation("student_profiles_teacher_idTousers")
-  student_profiles_student_profiles_user_idTousers    student_profiles?  @relation("student_profiles_user_idTousers")
+  id                                                     String                      @id
+  email                                                  String                      @unique @db.VarChar(255)
+  name                                                   String                      @db.VarChar(100)
+  password                                               String                      @db.VarChar(255)
+  role                                                   users_role
+  is_admin                                               Boolean                     @default(false)
+  avatar                                                 String?                     @db.VarChar(500)
+  phone                                                  String?                     @unique @db.VarChar(20)
+  created_at                                             DateTime                    @default(now())
+  updated_at                                             DateTime
+  feedbacks_feedbacks_student_idTousers                  feedbacks[]                 @relation("feedbacks_student_idTousers")
+  feedbacks_feedbacks_teacher_idTousers                  feedbacks[]                 @relation("feedbacks_teacher_idTousers")
+  files_files_student_idTousers                          files[]                     @relation("files_student_idTousers")
+  files_files_uploader_idTousers                         files[]                     @relation("files_uploader_idTousers")
+  lessons_lessons_student_idTousers                      lessons[]                   @relation("lessons_student_idTousers")
+  lessons_lessons_teacher_idTousers                      lessons[]                   @relation("lessons_teacher_idTousers")
+  student_pre_registrations                              student_pre_registrations[] @relation("pre_registrations_teacher_idTousers")
+  student_profiles_student_profiles_teacher_idTousers    student_profiles[]          @relation("student_profiles_teacher_idTousers")
+  student_profiles_student_profiles_user_idTousers       student_profiles?           @relation("student_profiles_user_idTousers")
 
   @@index([email])
   @@index([role])
+  @@index([phone])
 }
 
 enum users_role {
