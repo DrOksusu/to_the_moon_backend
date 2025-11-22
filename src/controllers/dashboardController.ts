@@ -75,7 +75,9 @@ export const getDashboardStats = async (
         where: {
           teacher_id: userId,
           status: 'completed',
-          feedbacks: null,
+          feedbacks: {
+            is: null,
+          },
         },
       });
 
