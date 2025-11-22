@@ -20,6 +20,40 @@ export const getDashboardStats = async (
     const userId = req.user.userId;
     const userRole = req.user.role;
 
+    // 먼저 시간이 지난 scheduled 레슨들을 자동으로 completed로 변경
+    const now = new Date();
+    const pastScheduledLessons = await prisma.lessons.findMany({
+      where: {
+        status: 'scheduled',
+        ...(userRole === 'teacher' ? { teacher_id: userId } : { student_id: userId }),
+      },
+      select: {
+        id: true,
+        scheduled_at: true,
+        duration: true,
+      },
+    });
+
+    const lessonsToComplete = pastScheduledLessons
+      .filter(lesson => {
+        const lessonEndTime = new Date(lesson.scheduled_at);
+        lessonEndTime.setMinutes(lessonEndTime.getMinutes() + lesson.duration);
+        return lessonEndTime < now;
+      })
+      .map(lesson => lesson.id);
+
+    if (lessonsToComplete.length > 0) {
+      await prisma.lessons.updateMany({
+        where: {
+          id: { in: lessonsToComplete },
+        },
+        data: {
+          status: 'completed',
+          updated_at: now,
+        },
+      });
+    }
+
     if (userRole === 'teacher') {
       // 선생님용 대시보드
       const totalStudents = await prisma.student_profiles.count({

@@ -22,6 +22,44 @@ export const getLessons = async (
     const userId = req.user.userId;
     const userRole = req.user.role;
 
+    // 먼저 시간이 지난 scheduled 레슨들을 자동으로 completed로 변경
+    const now = new Date();
+
+    // 사용자의 scheduled 레슨들 중 시간이 지난 것들을 찾음
+    const pastScheduledLessons = await prisma.lessons.findMany({
+      where: {
+        status: 'scheduled',
+        ...(userRole === 'teacher' ? { teacher_id: userId } : { student_id: userId }),
+      },
+      select: {
+        id: true,
+        scheduled_at: true,
+        duration: true,
+      },
+    });
+
+    // 시간이 지난 레슨들의 ID 추출
+    const lessonsToComplete = pastScheduledLessons
+      .filter(lesson => {
+        const lessonEndTime = new Date(lesson.scheduled_at);
+        lessonEndTime.setMinutes(lessonEndTime.getMinutes() + lesson.duration);
+        return lessonEndTime < now;
+      })
+      .map(lesson => lesson.id);
+
+    // 해당 레슨들을 completed로 업데이트
+    if (lessonsToComplete.length > 0) {
+      await prisma.lessons.updateMany({
+        where: {
+          id: { in: lessonsToComplete },
+        },
+        data: {
+          status: 'completed',
+          updated_at: now,
+        },
+      });
+    }
+
     // 조건 설정
     const where: any = {};
 

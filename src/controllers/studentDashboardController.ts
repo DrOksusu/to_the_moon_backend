@@ -19,6 +19,40 @@ export const getStudentDashboard = async (
 
     const studentId = req.user.userId;
 
+    // 먼저 시간이 지난 scheduled 레슨들을 자동으로 completed로 변경
+    const now = new Date();
+    const pastScheduledLessons = await prisma.lessons.findMany({
+      where: {
+        status: 'scheduled',
+        student_id: studentId,
+      },
+      select: {
+        id: true,
+        scheduled_at: true,
+        duration: true,
+      },
+    });
+
+    const lessonsToComplete = pastScheduledLessons
+      .filter(lesson => {
+        const lessonEndTime = new Date(lesson.scheduled_at);
+        lessonEndTime.setMinutes(lessonEndTime.getMinutes() + lesson.duration);
+        return lessonEndTime < now;
+      })
+      .map(lesson => lesson.id);
+
+    if (lessonsToComplete.length > 0) {
+      await prisma.lessons.updateMany({
+        where: {
+          id: { in: lessonsToComplete },
+        },
+        data: {
+          status: 'completed',
+          updated_at: now,
+        },
+      });
+    }
+
     // 학생 프로필 정보 (선생님 정보 포함)
     const studentProfile = await prisma.student_profiles.findUnique({
       where: { user_id: studentId },
