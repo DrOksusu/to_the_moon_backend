@@ -124,6 +124,7 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
       userId: result.id,
       email: result.email,
       role: result.role,
+      isAdmin: result.is_admin,
     });
 
     res.status(201).json({
@@ -200,6 +201,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       userId: user.id,
       email: user.email,
       role: user.role,
+      isAdmin: user.is_admin,
     });
 
     res.json({
@@ -209,6 +211,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         name: user.name,
         role: user.role,
         phone: user.phone,
+        is_admin: user.is_admin,
       },
       token,
     });

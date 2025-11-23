@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { hashPassword } from '../utils/bcrypt';
 import prisma from '../config/database';
 import { randomUUID } from 'crypto';
 

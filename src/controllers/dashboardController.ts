@@ -20,7 +20,7 @@ export const getDashboardStats = async (
     const userId = req.user.userId;
     const userRole = req.user.role;
 
-    // 먼저 시간이 지난 scheduled 레슨들을 자동으로 completed로 변경
+    // 시간이 지난 scheduled 레슨들을 자동으로 completed로 변경
     const now = new Date();
     const pastScheduledLessons = await prisma.lessons.findMany({
       where: {
@@ -60,13 +60,12 @@ export const getDashboardStats = async (
         where: { teacher_id: userId },
       });
 
+      // status가 'scheduled'인 모든 레슨을 예정된 레슨으로 카운트
+      // 자동 완료 로직이 실행된 후이므로, 남은 scheduled 레슨은 아직 종료되지 않은 레슨들
       const upcomingLessons = await prisma.lessons.count({
         where: {
           teacher_id: userId,
           status: 'scheduled',
-          scheduled_at: {
-            gte: new Date(),
-          },
         },
       });
 
@@ -98,14 +97,11 @@ export const getDashboardStats = async (
         },
       });
 
-      // 다가오는 레슨 목록
+      // 예정된 레슨 목록 (status가 'scheduled'인 모든 레슨)
       const upcomingLessonsList = await prisma.lessons.findMany({
         where: {
           teacher_id: userId,
           status: 'scheduled',
-          scheduled_at: {
-            gte: new Date(),
-          },
         },
         include: {
           users_lessons_student_idTousers: {
@@ -143,13 +139,12 @@ export const getDashboardStats = async (
         where: { user_id: userId },
       });
 
+      // status가 'scheduled'인 모든 레슨을 예정된 레슨으로 카운트
+      // 자동 완료 로직이 실행된 후이므로, 남은 scheduled 레슨은 아직 종료되지 않은 레슨들
       const upcomingLessons = await prisma.lessons.count({
         where: {
           student_id: userId,
           status: 'scheduled',
-          scheduled_at: {
-            gte: new Date(),
-          },
         },
       });
 
@@ -164,14 +159,11 @@ export const getDashboardStats = async (
         take: 5,
       });
 
-      // 다가오는 레슨 목록
+      // 예정된 레슨 목록 (status가 'scheduled'인 모든 레슨)
       const upcomingLessonsList = await prisma.lessons.findMany({
         where: {
           student_id: userId,
           status: 'scheduled',
-          scheduled_at: {
-            gte: new Date(),
-          },
         },
         include: {
           users_lessons_teacher_idTousers: {

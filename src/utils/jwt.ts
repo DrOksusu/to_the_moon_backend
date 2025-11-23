@@ -5,6 +5,7 @@ export interface JwtPayload {
   userId: string;
   email: string;
   role: string;
+  isAdmin?: boolean;
   [key: string]: any;
 }
 

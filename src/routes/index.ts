@@ -7,6 +7,7 @@ import feedbackRoutes from './feedbackRoutes';
 import fileRoutes from './fileRoutes';
 import dashboardRoutes from './dashboardRoutes';
 import studentDashboardRoutes from './studentDashboardRoutes';
+import adminRoutes from './adminRoutes';
 
 const router = Router();
 
@@ -22,6 +23,7 @@ router.get('/health', (_req, res) => {
 
 // API Routes
 router.use('/auth', authRoutes);
+router.use('/admin', adminRoutes);
 router.use('/teachers', teacherRoutes);
 router.use('/teacher/students', studentRoutes);
 router.use('/lessons', lessonRoutes);
