@@ -30,6 +30,11 @@ app.use((req, _res, next) => {
 });
 
 // Health check endpoint (for AWS App Runner)
+// Root path for default health check
+app.get('/', (_req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.get('/api/health', (_req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
