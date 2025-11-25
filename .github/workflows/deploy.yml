@@ -52,10 +52,26 @@ jobs:
             SERVICE_ARN=$(aws apprunner list-services --region ap-northeast-1 --query "ServiceSummaryList[?ServiceName=='$SERVICE_NAME'].ServiceArn" --output text)
 
             if [ -n "$SERVICE_ARN" ]; then
-              # Trigger deployment
-              aws apprunner start-deployment --service-arn "$SERVICE_ARN" --region ap-northeast-1
-              echo "✅ Deployment triggered successfully!"
-              echo "Service ARN: $SERVICE_ARN"
+              # Wait for service to be in RUNNING state before deploying
+              echo "Checking service status..."
+              for i in {1..30}; do
+                STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ap-northeast-1 --query "Service.Status" --output text)
+                echo "Current status: $STATUS"
+
+                if [ "$STATUS" = "RUNNING" ]; then
+                  echo "Service is RUNNING. Starting deployment..."
+                  aws apprunner start-deployment --service-arn "$SERVICE_ARN" --region ap-northeast-1
+                  echo "✅ Deployment triggered successfully!"
+                  echo "Service ARN: $SERVICE_ARN"
+                  exit 0
+                fi
+
+                echo "Waiting 30 seconds for service to be ready... ($i/30)"
+                sleep 30
+              done
+
+              echo "❌ Timeout: Service did not reach RUNNING state after 15 minutes"
+              exit 1
             else
               echo "❌ Could not find service ARN"
               exit 1
