@@ -145,14 +145,16 @@ export const createFeedback = async (
   res: Response
 ): Promise<void> => {
   try {
+    console.log('createFeedback - req.user:', req.user);
     if (!req.user || req.user.role !== 'teacher') {
+      console.log('createFeedback - Forbidden: role is', req.user?.role);
       res.status(403).json({
         error: 'Forbidden',
       });
       return;
     }
 
-    const { lesson_id, student_id, rating, content, strengths, improvements, homework } =
+    const { lesson_id, student_id, rating, content, strengths, improvements, homework, reference_urls } =
       req.body;
 
     // 입력 검증
@@ -211,6 +213,7 @@ export const createFeedback = async (
         strengths,
         improvements,
         homework,
+        reference_urls,
         updated_at: new Date(),
       },
     });
@@ -241,7 +244,7 @@ export const updateFeedback = async (
     }
 
     const { id } = req.params;
-    const { rating, content, strengths, improvements, homework } = req.body;
+    const { rating, content, strengths, improvements, homework, reference_urls } = req.body;
     const teacherId = req.user.userId;
 
     // 해당 선생님의 피드백인지 확인
@@ -276,6 +279,7 @@ export const updateFeedback = async (
         strengths,
         improvements,
         homework,
+        reference_urls,
         updated_at: new Date(),
       },
     });

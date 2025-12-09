@@ -17,6 +17,7 @@ model feedbacks {
   strengths                         String?  @db.Text
   improvements                      String?  @db.Text
   homework                          String?  @db.Text
+  reference_urls                    String?  @db.Text
   created_at                        DateTime @default(now())
   updated_at                        DateTime
   lessons                           lessons  @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
