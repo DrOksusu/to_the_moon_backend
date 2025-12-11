@@ -7,6 +7,7 @@ import {
   reassignStudent,
   getAllLessons,
   getStats,
+  getTeacherLessonStats,
 } from '../controllers/adminController';
 import { authenticate } from '../middlewares/auth';
 
@@ -17,6 +18,7 @@ router.use(authenticate);
 
 // 통계
 router.get('/stats', getStats);
+router.get('/teacher-lesson-stats', getTeacherLessonStats);
 
 // 선생님 관리
 router.get('/teachers', getAllTeachers);

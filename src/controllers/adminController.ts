@@ -433,6 +433,94 @@ export const getAllLessons = async (
 };
 
 /**
+ * 이번 달 선생님별 레슨 현황 조회 (관리자 전용)
+ * GET /api/admin/teacher-lesson-stats
+ */
+export const getTeacherLessonStats = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user || !req.user.isAdmin) {
+      res.status(403).json({
+        error: 'Admin access required',
+      });
+      return;
+    }
+
+    // 이번 달의 시작과 끝
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    // 모든 선생님 가져오기
+    const teachers = await prisma.users.findMany({
+      where: { role: 'teacher' },
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    // 각 선생님별 이번 달 레슨 통계
+    const teacherStats = await Promise.all(
+      teachers.map(async (teacher) => {
+        const [completedLessons, scheduledLessons, totalLessons] = await Promise.all([
+          prisma.lessons.count({
+            where: {
+              teacher_id: teacher.id,
+              status: 'completed',
+              scheduled_at: {
+                gte: startOfMonth,
+                lte: endOfMonth,
+              },
+            },
+          }),
+          prisma.lessons.count({
+            where: {
+              teacher_id: teacher.id,
+              status: 'scheduled',
+              scheduled_at: {
+                gte: startOfMonth,
+                lte: endOfMonth,
+              },
+            },
+          }),
+          prisma.lessons.count({
+            where: {
+              teacher_id: teacher.id,
+              scheduled_at: {
+                gte: startOfMonth,
+                lte: endOfMonth,
+              },
+            },
+          }),
+        ]);
+
+        return {
+          teacherId: teacher.id,
+          teacherName: teacher.name,
+          completedLessons,
+          scheduledLessons,
+          totalLessons,
+        };
+      })
+    );
+
+    res.json({
+      month: `${now.getFullYear()}년 ${now.getMonth() + 1}월`,
+      stats: teacherStats,
+    });
+  } catch (error) {
+    console.error('Get teacher lesson stats error:', error);
+    res.status(500).json({
+      error: 'Failed to get teacher lesson statistics',
+    });
+  }
+};
+
+/**
  * 전체 통계 조회 (관리자 전용)
  * GET /api/admin/stats
  */
