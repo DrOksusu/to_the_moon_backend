@@ -4,6 +4,7 @@ import {
   getFeedback,
   createFeedback,
   updateFeedback,
+  addStudentReaction,
 } from '../controllers/feedbackController';
 import { authenticate } from '../middlewares/auth';
 
@@ -23,5 +24,8 @@ router.post('/', createFeedback);
 
 // 피드백 수정
 router.put('/:id', updateFeedback);
+
+// 학생 반응 추가
+router.patch('/:id/reaction', addStudentReaction);
 
 export default router;

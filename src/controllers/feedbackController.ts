@@ -292,3 +292,80 @@ export const updateFeedback = async (
     });
   }
 };
+
+/**
+ * 학생 반응 추가 (학생 전용)
+ * PATCH /api/feedback/:id/reaction
+ */
+export const addStudentReaction = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user || req.user.role !== 'student') {
+      res.status(403).json({
+        error: 'Forbidden',
+      });
+      return;
+    }
+
+    const { id } = req.params;
+    const { reaction, message } = req.body;
+    const studentId = req.user.userId;
+
+    // 반응 검증 (허용된 이모티콘만)
+    const allowedReactions = ['👍', '😊', '🔥', '💪', '🙏'];
+    if (!reaction || !allowedReactions.includes(reaction)) {
+      res.status(400).json({
+        error: 'Invalid reaction. Allowed: 👍, 😊, 🔥, 💪, 🙏',
+      });
+      return;
+    }
+
+    // 메시지 길이 검증 (최대 100자)
+    if (message && message.length > 100) {
+      res.status(400).json({
+        error: 'Message must be 100 characters or less',
+      });
+      return;
+    }
+
+    // 해당 학생의 피드백인지 확인
+    const existingFeedback = await prisma.feedbacks.findFirst({
+      where: {
+        id,
+        student_id: studentId,
+      },
+    });
+
+    if (!existingFeedback) {
+      res.status(404).json({
+        error: 'Feedback not found',
+      });
+      return;
+    }
+
+    // 학생 반응 업데이트
+    const updatedFeedback = await prisma.feedbacks.update({
+      where: { id },
+      data: {
+        student_reaction: reaction,
+        student_message: message || null,
+        student_reacted_at: new Date(),
+        updated_at: new Date(),
+      },
+    });
+
+    res.json({
+      id: updatedFeedback.id,
+      student_reaction: updatedFeedback.student_reaction,
+      student_message: updatedFeedback.student_message,
+      student_reacted_at: updatedFeedback.student_reacted_at,
+    });
+  } catch (error) {
+    console.error('Add student reaction error:', error);
+    res.status(500).json({
+      error: 'Failed to add student reaction',
+    });
+  }
+};
