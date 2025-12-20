@@ -206,19 +206,21 @@ export const createLesson = async (
       return;
     }
 
-    const { student_id, title, date, time, duration, location, notes } =
+    const { student_id, title, date, time, scheduled_at: scheduledAtInput, duration, location, notes } =
       req.body;
 
-    // 입력 검증
-    if (!student_id || !date || !time) {
+    // 입력 검증: scheduled_at이 있으면 date/time은 필요 없음
+    if (!student_id || (!scheduledAtInput && (!date || !time))) {
       res.status(400).json({
-        error: 'Student ID, date, and time are required',
+        error: 'Student ID and scheduled_at (or date and time) are required',
       });
       return;
     }
 
-    // scheduled_at 생성 (date + time)
-    const scheduled_at = new Date(`${date}T${time}`);
+    // scheduled_at 생성: scheduled_at이 직접 전달되면 그것을 사용, 아니면 date + time으로 생성
+    const scheduled_at = scheduledAtInput
+      ? new Date(scheduledAtInput)
+      : new Date(`${date}T${time}`);
 
     const lesson = await prisma.lessons.create({
       data: {
@@ -261,7 +263,7 @@ export const updateLesson = async (
     }
 
     const { id } = req.params;
-    const { date, time, student_id, duration, status, notes, title, location } = req.body;
+    const { date, time, scheduled_at: scheduledAtInput, student_id, duration, status, notes, title, location } = req.body;
     const teacherId = req.user.userId;
 
     // 해당 선생님의 수업인지 확인
@@ -279,9 +281,11 @@ export const updateLesson = async (
       return;
     }
 
-    // scheduled_at 생성 (date + time이 있는 경우에만)
+    // scheduled_at 생성: scheduled_at이 직접 전달되면 그것을 사용, 아니면 date + time으로 생성
     let scheduled_at;
-    if (date && time) {
+    if (scheduledAtInput) {
+      scheduled_at = new Date(scheduledAtInput);
+    } else if (date && time) {
       scheduled_at = new Date(`${date}T${time}`);
     }
 
