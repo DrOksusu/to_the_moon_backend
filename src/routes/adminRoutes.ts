@@ -6,6 +6,9 @@ import {
   assignStudent,
   reassignStudent,
   getAllLessons,
+  getLesson,
+  updateLesson,
+  cancelLesson,
   getStats,
   getTeacherLessonStats,
 } from '../controllers/adminController';
@@ -31,5 +34,8 @@ router.put('/reassign-student', reassignStudent);
 
 // 레슨 관리
 router.get('/lessons', getAllLessons);
+router.get('/lessons/:id', getLesson);
+router.put('/lessons/:id', updateLesson);
+router.patch('/lessons/:id/cancel', cancelLesson);
 
 export default router;

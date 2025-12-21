@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
+import { createNotification } from './notificationController';
 
 /**
  * 모든 선생님 목록 조회 (관리자 전용)
@@ -516,6 +517,335 @@ export const getTeacherLessonStats = async (
     console.error('Get teacher lesson stats error:', error);
     res.status(500).json({
       error: 'Failed to get teacher lesson statistics',
+    });
+  }
+};
+
+/**
+ * 레슨 상세 조회 (관리자 전용)
+ * GET /api/admin/lessons/:id
+ */
+export const getLesson = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user || !req.user.isAdmin) {
+      res.status(403).json({
+        error: 'Admin access required',
+      });
+      return;
+    }
+
+    const { id } = req.params;
+
+    const lesson = await prisma.lessons.findUnique({
+      where: { id },
+      include: {
+        users_lessons_teacher_idTousers: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        users_lessons_student_idTousers: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        feedbacks: {
+          select: {
+            id: true,
+            rating: true,
+            content: true,
+          },
+        },
+      },
+    });
+
+    if (!lesson) {
+      res.status(404).json({
+        error: 'Lesson not found',
+      });
+      return;
+    }
+
+    res.json({
+      ...lesson,
+      teacher: lesson.users_lessons_teacher_idTousers,
+      student: lesson.users_lessons_student_idTousers,
+      feedback: lesson.feedbacks,
+    });
+  } catch (error) {
+    console.error('Get lesson error:', error);
+    res.status(500).json({
+      error: 'Failed to get lesson',
+    });
+  }
+};
+
+/**
+ * 레슨 수정 (관리자 전용)
+ * PUT /api/admin/lessons/:id
+ */
+export const updateLesson = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user || !req.user.isAdmin) {
+      res.status(403).json({
+        error: 'Admin access required',
+      });
+      return;
+    }
+
+    const { id } = req.params;
+    const {
+      teacher_id,
+      student_id,
+      title,
+      scheduled_at: scheduledAtInput,
+      duration,
+      status,
+      location,
+      notes
+    } = req.body;
+
+    // 레슨 존재 여부 확인
+    const existingLesson = await prisma.lessons.findUnique({
+      where: { id },
+    });
+
+    if (!existingLesson) {
+      res.status(404).json({
+        error: 'Lesson not found',
+      });
+      return;
+    }
+
+    // 선생님 변경 시 해당 선생님 존재 여부 확인
+    if (teacher_id && teacher_id !== existingLesson.teacher_id) {
+      const teacher = await prisma.users.findFirst({
+        where: { id: teacher_id, role: 'teacher' },
+      });
+      if (!teacher) {
+        res.status(404).json({
+          error: 'Teacher not found',
+        });
+        return;
+      }
+    }
+
+    // 학생 변경 시 해당 학생 존재 여부 확인
+    if (student_id && student_id !== existingLesson.student_id) {
+      const student = await prisma.users.findFirst({
+        where: { id: student_id, role: 'student' },
+      });
+      if (!student) {
+        res.status(404).json({
+          error: 'Student not found',
+        });
+        return;
+      }
+    }
+
+    // 업데이트 데이터 준비
+    const updateData: any = {
+      updated_at: new Date(),
+    };
+
+    if (teacher_id !== undefined) updateData.teacher_id = teacher_id;
+    if (student_id !== undefined) updateData.student_id = student_id;
+    if (title !== undefined) updateData.title = title;
+    if (scheduledAtInput) updateData.scheduled_at = new Date(scheduledAtInput);
+    if (duration !== undefined) updateData.duration = duration;
+    if (status !== undefined) updateData.status = status;
+    if (location !== undefined) updateData.location = location;
+    if (notes !== undefined) updateData.notes = notes;
+
+    const updatedLesson = await prisma.lessons.update({
+      where: { id },
+      data: updateData,
+      include: {
+        users_lessons_teacher_idTousers: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        users_lessons_student_idTousers: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // 알림 생성
+    const scheduledDate = new Date(updatedLesson.scheduled_at);
+    const dateStr = scheduledDate.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    const timeStr = scheduledDate.toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    // 선생님 변경 시 알림
+    if (teacher_id && teacher_id !== existingLesson.teacher_id) {
+      // 학생에게 선생님 변경 알림
+      await createNotification(
+        updatedLesson.student_id,
+        'teacher_changed',
+        '담당 선생님 변경',
+        `${dateStr} ${timeStr} 레슨의 담당 선생님이 ${updatedLesson.users_lessons_teacher_idTousers.name} 선생님으로 변경되었습니다.`,
+        id
+      );
+
+      // 새 선생님에게 알림
+      await createNotification(
+        teacher_id,
+        'lesson_updated',
+        '새 레슨 배정',
+        `${dateStr} ${timeStr}에 ${updatedLesson.users_lessons_student_idTousers.name} 학생의 레슨이 배정되었습니다.`,
+        id
+      );
+
+      // 이전 선생님에게 알림
+      await createNotification(
+        existingLesson.teacher_id,
+        'lesson_updated',
+        '레슨 담당 변경',
+        `${dateStr} ${timeStr} ${updatedLesson.users_lessons_student_idTousers.name} 학생의 레슨이 다른 선생님에게 배정되었습니다.`,
+        id
+      );
+    } else {
+      // 일반 수정 알림 (선생님에게)
+      await createNotification(
+        updatedLesson.teacher_id,
+        'lesson_updated',
+        '레슨 일정 변경',
+        `${dateStr} ${timeStr} ${updatedLesson.users_lessons_student_idTousers.name} 학생의 레슨 일정이 관리자에 의해 변경되었습니다.`,
+        id
+      );
+
+      // 학생에게 알림
+      await createNotification(
+        updatedLesson.student_id,
+        'lesson_updated',
+        '레슨 일정 변경',
+        `${dateStr} ${timeStr} 레슨 일정이 변경되었습니다. 확인해 주세요.`,
+        id
+      );
+    }
+
+    res.json({
+      ...updatedLesson,
+      teacher: updatedLesson.users_lessons_teacher_idTousers,
+      student: updatedLesson.users_lessons_student_idTousers,
+    });
+  } catch (error) {
+    console.error('Update lesson error:', error);
+    res.status(500).json({
+      error: 'Failed to update lesson',
+    });
+  }
+};
+
+/**
+ * 레슨 취소 (관리자 전용)
+ * PATCH /api/admin/lessons/:id/cancel
+ */
+export const cancelLesson = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user || !req.user.isAdmin) {
+      res.status(403).json({
+        error: 'Admin access required',
+      });
+      return;
+    }
+
+    const { id } = req.params;
+
+    // 레슨 존재 여부 확인 (선생님, 학생 정보 포함)
+    const existingLesson = await prisma.lessons.findUnique({
+      where: { id },
+      include: {
+        users_lessons_teacher_idTousers: {
+          select: { id: true, name: true },
+        },
+        users_lessons_student_idTousers: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    if (!existingLesson) {
+      res.status(404).json({
+        error: 'Lesson not found',
+      });
+      return;
+    }
+
+    const updatedLesson = await prisma.lessons.update({
+      where: { id },
+      data: {
+        status: 'cancelled',
+        updated_at: new Date(),
+      },
+    });
+
+    // 알림 생성
+    const scheduledDate = new Date(existingLesson.scheduled_at);
+    const dateStr = scheduledDate.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    const timeStr = scheduledDate.toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    // 선생님에게 알림
+    await createNotification(
+      existingLesson.teacher_id,
+      'lesson_cancelled',
+      '레슨 취소',
+      `${dateStr} ${timeStr} ${existingLesson.users_lessons_student_idTousers.name} 학생의 레슨이 관리자에 의해 취소되었습니다.`,
+      id
+    );
+
+    // 학생에게 알림
+    await createNotification(
+      existingLesson.student_id,
+      'lesson_cancelled',
+      '레슨 취소',
+      `${dateStr} ${timeStr} 레슨이 취소되었습니다.`,
+      id
+    );
+
+    res.json({
+      id: updatedLesson.id,
+      status: updatedLesson.status,
+      message: 'Lesson cancelled successfully',
+    });
+  } catch (error) {
+    console.error('Cancel lesson error:', error);
+    res.status(500).json({
+      error: 'Failed to cancel lesson',
     });
   }
 };

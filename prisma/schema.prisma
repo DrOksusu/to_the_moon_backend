@@ -21,6 +21,7 @@ model feedbacks {
   student_reaction                  String?   @db.VarChar(10)
   student_message                   String?   @db.VarChar(100)
   student_reacted_at                DateTime?
+  teacher_viewed_reaction_at        DateTime?
   created_at                        DateTime  @default(now())
   updated_at                        DateTime
   lessons                           lessons   @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
@@ -52,20 +53,21 @@ model files {
 }
 
 model lessons {
-  id                              String         @id
+  id                              String          @id
   teacher_id                      String
   student_id                      String
-  title                           String?        @db.VarChar(255)
+  title                           String?         @db.VarChar(255)
   scheduled_at                    DateTime
-  duration                        Int            @default(60)
-  status                          lessons_status @default(scheduled)
-  location                        String?        @db.VarChar(255)
-  notes                           String?        @db.Text
-  created_at                      DateTime       @default(now())
+  duration                        Int             @default(60)
+  status                          lessons_status  @default(scheduled)
+  location                        String?         @db.VarChar(255)
+  notes                           String?         @db.Text
+  created_at                      DateTime        @default(now())
   updated_at                      DateTime
   feedbacks                       feedbacks?
-  users_lessons_student_idTousers users          @relation("lessons_student_idTousers", fields: [student_id], references: [id], onDelete: Cascade)
-  users_lessons_teacher_idTousers users          @relation("lessons_teacher_idTousers", fields: [teacher_id], references: [id], onDelete: Cascade)
+  users_lessons_student_idTousers users           @relation("lessons_student_idTousers", fields: [student_id], references: [id], onDelete: Cascade)
+  users_lessons_teacher_idTousers users           @relation("lessons_teacher_idTousers", fields: [teacher_id], references: [id], onDelete: Cascade)
+  notifications                   notifications[]
 
   @@index([scheduled_at])
   @@index([status])
@@ -131,6 +133,7 @@ model users {
   student_pre_registrations                              student_pre_registrations[] @relation("pre_registrations_teacher_idTousers")
   student_profiles_student_profiles_teacher_idTousers    student_profiles[]          @relation("student_profiles_teacher_idTousers")
   student_profiles_student_profiles_user_idTousers       student_profiles?           @relation("student_profiles_user_idTousers")
+  notifications                                          notifications[]
 
   @@index([email])
   @@index([role])
@@ -146,4 +149,29 @@ enum lessons_status {
   scheduled
   completed
   cancelled
+}
+
+model notifications {
+  id                String              @id
+  user_id           String
+  type              notification_type
+  title             String              @db.VarChar(255)
+  message           String              @db.Text
+  related_lesson_id String?
+  is_read           Boolean             @default(false)
+  created_at        DateTime            @default(now())
+  users             users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  lessons           lessons?            @relation(fields: [related_lesson_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([is_read])
+  @@index([created_at])
+}
+
+enum notification_type {
+  lesson_created
+  lesson_updated
+  lesson_cancelled
+  teacher_changed
+  feedback_received
 }

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
 import { randomUUID } from 'crypto';
+import { createNotification } from './notificationController';
 
 /**
  * 피드백 목록 조회
@@ -201,6 +202,12 @@ export const createFeedback = async (
       return;
     }
 
+    // 선생님 정보 조회
+    const teacher = await prisma.users.findUnique({
+      where: { id: req.user.userId },
+      select: { name: true },
+    });
+
     // 피드백 생성
     const feedback = await prisma.feedbacks.create({
       data: {
@@ -217,6 +224,16 @@ export const createFeedback = async (
         updated_at: new Date(),
       },
     });
+
+    // 학생에게 알림 전송
+    const lessonTitle = lesson.title || '레슨';
+    await createNotification(
+      student_id,
+      'feedback_received',
+      '새 피드백이 도착했습니다',
+      `${teacher?.name || '선생님'}님이 "${lessonTitle}" 수업에 대한 피드백을 작성했습니다.`,
+      lesson_id
+    );
 
     res.status(201).json(feedback);
   } catch (error) {
@@ -366,6 +383,96 @@ export const addStudentReaction = async (
     console.error('Add student reaction error:', error);
     res.status(500).json({
       error: 'Failed to add student reaction',
+    });
+  }
+};
+
+/**
+ * 선생님이 학생 반응 확인 (선생님 전용)
+ * PATCH /api/feedback/:id/view-reaction
+ */
+export const viewStudentReaction = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user || req.user.role !== 'teacher') {
+      res.status(403).json({
+        error: 'Forbidden',
+      });
+      return;
+    }
+
+    const { id } = req.params;
+    const teacherId = req.user.userId;
+
+    // 해당 선생님의 피드백인지 확인
+    const existingFeedback = await prisma.feedbacks.findFirst({
+      where: {
+        id,
+        teacher_id: teacherId,
+      },
+    });
+
+    if (!existingFeedback) {
+      res.status(404).json({
+        error: 'Feedback not found',
+      });
+      return;
+    }
+
+    // 반응 확인 시간 업데이트
+    const updatedFeedback = await prisma.feedbacks.update({
+      where: { id },
+      data: {
+        teacher_viewed_reaction_at: new Date(),
+        updated_at: new Date(),
+      },
+    });
+
+    res.json({
+      id: updatedFeedback.id,
+      teacher_viewed_reaction_at: updatedFeedback.teacher_viewed_reaction_at,
+    });
+  } catch (error) {
+    console.error('View student reaction error:', error);
+    res.status(500).json({
+      error: 'Failed to mark reaction as viewed',
+    });
+  }
+};
+
+/**
+ * 확인하지 않은 학생 반응 개수 조회 (선생님 전용)
+ * GET /api/feedback/unviewed-reactions-count
+ */
+export const getUnviewedReactionsCount = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    if (!req.user || req.user.role !== 'teacher') {
+      res.status(403).json({
+        error: 'Forbidden',
+      });
+      return;
+    }
+
+    const teacherId = req.user.userId;
+
+    const count = await prisma.feedbacks.count({
+      where: {
+        teacher_id: teacherId,
+        student_reaction: { not: null },
+        teacher_viewed_reaction_at: null,
+      },
+    });
+
+    res.json({ count });
+  } catch (error) {
+    console.error('Get unviewed reactions count error:', error);
+    res.status(500).json({
+      error: 'Failed to get unviewed reactions count',
     });
   }
 };

@@ -5,6 +5,8 @@ import {
   createFeedback,
   updateFeedback,
   addStudentReaction,
+  viewStudentReaction,
+  getUnviewedReactionsCount,
 } from '../controllers/feedbackController';
 import { authenticate } from '../middlewares/auth';
 
@@ -15,6 +17,9 @@ router.use(authenticate);
 
 // 피드백 목록 조회
 router.get('/', getFeedbacks);
+
+// 확인하지 않은 반응 개수 조회 (선생님 전용) - :id 라우트보다 먼저 정의해야 함
+router.get('/unviewed-reactions-count', getUnviewedReactionsCount);
 
 // 피드백 상세 정보
 router.get('/:id', getFeedback);
@@ -27,5 +32,8 @@ router.put('/:id', updateFeedback);
 
 // 학생 반응 추가
 router.patch('/:id/reaction', addStudentReaction);
+
+// 선생님이 반응 확인
+router.patch('/:id/view-reaction', viewStudentReaction);
 
 export default router;

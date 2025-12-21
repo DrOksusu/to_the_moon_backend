@@ -8,6 +8,7 @@ import fileRoutes from './fileRoutes';
 import dashboardRoutes from './dashboardRoutes';
 import studentDashboardRoutes from './studentDashboardRoutes';
 import adminRoutes from './adminRoutes';
+import notificationRoutes from './notificationRoutes';
 
 const router = Router();
 
@@ -31,5 +32,6 @@ router.use('/feedback', feedbackRoutes);
 router.use('/files', fileRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/student', studentDashboardRoutes);
+router.use('/notifications', notificationRoutes);
 
 export default router;
