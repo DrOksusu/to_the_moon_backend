@@ -101,6 +101,9 @@ export const getLessons = async (
           select: {
             id: true,
             rating: true,
+            student_reaction: true,
+            student_message: true,
+            student_reacted_at: true,
           },
         },
       },
