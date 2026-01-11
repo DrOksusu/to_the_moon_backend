@@ -439,7 +439,7 @@ export const restoreLesson = async (
   res: Response
 ): Promise<void> => {
   try {
-    if (\!req.user || req.user.role \!== 'teacher') {
+    if (!req.user || req.user.role !== 'teacher') {
       res.status(403).json({
         error: 'Forbidden',
       });
@@ -457,14 +457,14 @@ export const restoreLesson = async (
       },
     });
 
-    if (\!existingLesson) {
+    if (!existingLesson) {
       res.status(404).json({
         error: 'Lesson not found',
       });
       return;
     }
 
-    if (existingLesson.status \!== 'cancelled') {
+    if (existingLesson.status !== 'cancelled') {
       res.status(400).json({
         error: 'Only cancelled lessons can be restored',
       });
