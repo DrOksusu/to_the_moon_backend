@@ -6,6 +6,7 @@ import {
   updateLesson,
   deleteLesson,
   cancelLesson,
+  restoreLesson,
   getLessonFeedback,
 } from '../controllers/lessonController';
 import { authenticate } from '../middlewares/auth';
@@ -23,6 +24,9 @@ router.get('/:id/feedback', getLessonFeedback);
 
 // 수업 취소 (/:id보다 먼저 정의해야 함)
 router.patch('/:id/cancel', cancelLesson);
+
+// 수업 재예약 (취소된 수업 복원)
+router.patch('/:id/restore', restoreLesson);
 
 // 수업 상세 정보
 router.get('/:id', getLesson);

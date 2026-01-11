@@ -429,6 +429,81 @@ export const cancelLesson = async (
  * 레슨의 피드백 조회
  * GET /api/lessons/:id/feedback
  */
+
+/**
+ * 수업 재예약 (취소된 수업 복원, 선생님 전용)
+ * PATCH /api/lessons/:id/restore
+ */
+export const restoreLesson = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    if (\!req.user || req.user.role \!== 'teacher') {
+      res.status(403).json({
+        error: 'Forbidden',
+      });
+      return;
+    }
+
+    const { id } = req.params;
+    const { scheduled_at } = req.body;
+    const teacherId = req.user.userId;
+
+    const existingLesson = await prisma.lessons.findFirst({
+      where: {
+        id,
+        teacher_id: teacherId,
+      },
+    });
+
+    if (\!existingLesson) {
+      res.status(404).json({
+        error: 'Lesson not found',
+      });
+      return;
+    }
+
+    if (existingLesson.status \!== 'cancelled') {
+      res.status(400).json({
+        error: 'Only cancelled lessons can be restored',
+      });
+      return;
+    }
+
+    const newScheduledAt = scheduled_at ? new Date(scheduled_at) : existingLesson.scheduled_at;
+
+    const updatedLesson = await prisma.lessons.update({
+      where: { id },
+      data: {
+        status: 'scheduled',
+        scheduled_at: newScheduledAt,
+        updated_at: new Date(),
+      },
+      include: {
+        users_lessons_student_idTousers: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      id: updatedLesson.id,
+      status: updatedLesson.status,
+      scheduled_at: updatedLesson.scheduled_at,
+      student: updatedLesson.users_lessons_student_idTousers,
+    });
+  } catch (error) {
+    console.error('Restore lesson error:', error);
+    res.status(500).json({
+      error: 'Failed to restore lesson',
+    });
+  }
+};
+
 export const getLessonFeedback = async (
   req: Request,
   res: Response
