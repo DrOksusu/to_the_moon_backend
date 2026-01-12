@@ -8,21 +8,23 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::827899252497:role/tothemoon_apprunner_role
           aws-region: ap-northeast-1
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
         with:
           mask-password: 'true'
 
@@ -44,42 +46,31 @@ jobs:
           echo "Image pushed successfully!"
           echo "ECR Image: ${{ steps.login-ecr.outputs.registry }}/to-the-moon-backend:latest"
 
-          # Check if App Runner service exists
           if aws apprunner list-services --region ap-northeast-1 | grep -q "$SERVICE_NAME"; then
             echo "App Runner service found. Triggering deployment..."
-
-            # Get service ARN
             SERVICE_ARN=$(aws apprunner list-services --region ap-northeast-1 --query "ServiceSummaryList[?ServiceName=='$SERVICE_NAME'].ServiceArn" --output text)
-
             if [ -n "$SERVICE_ARN" ]; then
-              # Wait for service to be in RUNNING state before deploying
               echo "Checking service status..."
               for i in {1..30}; do
                 STATUS=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region ap-northeast-1 --query "Service.Status" --output text)
                 echo "Current status: $STATUS"
-
                 if [ "$STATUS" = "RUNNING" ]; then
                   echo "Service is RUNNING. Starting deployment..."
                   aws apprunner start-deployment --service-arn "$SERVICE_ARN" --region ap-northeast-1
-                  echo "✅ Deployment triggered successfully!"
+                  echo "Deployment triggered successfully!"
                   echo "Service ARN: $SERVICE_ARN"
                   exit 0
                 fi
-
                 echo "Waiting 30 seconds for service to be ready... ($i/30)"
                 sleep 30
               done
-
-              echo "❌ Timeout: Service did not reach RUNNING state after 15 minutes"
+              echo "Timeout: Service did not reach RUNNING state after 15 minutes"
               exit 1
             else
-              echo "❌ Could not find service ARN"
+              echo "Could not find service ARN"
               exit 1
             fi
           else
-            echo "⚠️  App Runner service '$SERVICE_NAME' not found."
-            echo "Please create the service first using the AWS Console:"
-            echo "1. Go to https://ap-northeast-1.console.aws.amazon.com/apprunner/home?region=ap-northeast-1#/services"
-            echo "2. Create a new service using the ECR image: ${{ steps.login-ecr.outputs.registry }}/to-the-moon-backend:latest"
-            echo "3. After creating the service, future deployments will be automatic!"
+            echo "App Runner service not found."
+            echo "Please create the service first using the AWS Console."
           fi
